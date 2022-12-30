@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "outDir": "./build",
+    "target": "esnext",
+    "module": "commonjs",
+    "lib": ["esnext"],
+    "strict": true,
+    "moduleResolution": "node",
+    "useDefineForClassFields": true,
+    "allowSyntheticDefaultImports": true,
+    "composite": true,
+    "sourceMap": false,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts", "src/**/*.d.ts", "configs/*.json"],
+  "exclude": ["node_modules"]
+}
