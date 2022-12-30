@@ -1,9 +1,20 @@
 import express from 'express';
 import SERVER_CONFIG from '../configs/server.config.json';
-import { HI_MSG } from './utils/constant';
 import cors from 'cors';
+import RoomController from './controllers/room';
 
 const app = express();
+
+// log req info in debug mode
+if (process.argv[2] === '--debug') {
+  app.use((req, res, next) => {
+    console.log(`[${req.method}] ${req.path}`);
+    if (req.body) {
+      console.log(req.body);
+    }
+    next();
+  });
+}
 
 /* cors */
 app.use(
@@ -14,11 +25,10 @@ app.use(
 /* json parse */
 app.use(express.json());
 
-app.post('/hi', (req, res) => {
-  console.log(req.body);
-  console.log(req.body.name);
-  res.send(HI_MSG);
-});
+/**
+ * Room
+ */
+app.use('/room', RoomController);
 
 app.listen(SERVER_CONFIG.PORT, () => {
   console.log(`app listening on http://localhost:${SERVER_CONFIG.PORT}`);
