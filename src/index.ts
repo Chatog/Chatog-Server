@@ -5,17 +5,6 @@ import RoomController from './controllers/room';
 
 const app = express();
 
-// log req info in debug mode
-if (process.argv[2] === '--debug') {
-  app.use((req, res, next) => {
-    console.log(`[${req.method}] ${req.path}`);
-    if (req.body) {
-      console.log(req.body);
-    }
-    next();
-  });
-}
-
 /* cors */
 app.use(
   cors({
@@ -24,6 +13,19 @@ app.use(
 );
 /* json parse */
 app.use(express.json());
+
+// log req info in debug mode
+if (process.argv[2] === '--debug') {
+  app.use((req, res, next) => {
+    console.log(`[${req.method}] ${req.path}`);
+    if (req.method === 'GET') {
+      console.log(req.query);
+    } else {
+      console.log(req.body);
+    }
+    next();
+  });
+}
 
 /**
  * Room
