@@ -1,12 +1,8 @@
 import MemberMapper, { RoomMember } from '../data/member';
 import RoomMemberMapper from '../data/roomMember';
 import { generateRoomMemberId } from '../utils/common';
-import { ERR_MEMBER_NOT_EXISTS, ERR_ROOM_NOT_EXISTS } from '../utils/const';
 
 class RoomMemberService {
-  /**
-   * @returns memberId
-   */
   memberJoinRoom(roomId: string, roomMemberInit: RoomMember): string {
     const memberId = generateRoomMemberId();
     const member = {

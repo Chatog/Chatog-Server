@@ -1,7 +1,8 @@
 import RoomService from '../services/room';
 import { Request, Router } from 'express';
 import { fail, success, Res } from './index';
-import roomMemberService, { RoomMemberVO } from '../services/roomMember';
+import roomMemberService from '../services/roomMember';
+import { RoomMember } from '../data/member';
 
 /**
  * @prefix /room
@@ -70,7 +71,7 @@ roomController.get(
   (
     req: Request<
       { memberId: string },
-      Res<RoomMemberVO[]>,
+      Res<RoomMember[]>,
       null,
       ReqGetRoomInfoParam
     >,
