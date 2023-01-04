@@ -34,9 +34,9 @@ class RoomService {
       memberId: '',
       nickname: param.nickname,
       // room owner will not be banned
-      banVideo: true,
-      banAudio: true,
-      banScreen: true
+      banVideo: false,
+      banAudio: false,
+      banScreen: false
     });
 
     return {

@@ -12,7 +12,7 @@ export function success<T>(data: T): Res<T> {
   };
 }
 
-export function fail(msg: string): Res<null> {
+export function fail(msg: string): Res<any> {
   return {
     code: 1,
     msg,

@@ -1,7 +1,8 @@
-import express from 'express';
+import express, { Request } from 'express';
 import SERVER_CONFIG from '../configs/server.config.json';
 import cors from 'cors';
 import RoomController from './controllers/room';
+import { decodeRoomMemberJwt } from './services/token';
 
 const app = express();
 
@@ -14,8 +15,9 @@ app.use(
 /* json parse */
 app.use(express.json());
 
+const isDebug = process.argv[2] === '--debug';
 // log req info in debug mode
-if (process.argv[2] === '--debug') {
+if (isDebug) {
   app.use((req, res, next) => {
     console.log(`[${req.method}] ${req.path}`);
     if (req.method === 'GET') {
@@ -26,6 +28,21 @@ if (process.argv[2] === '--debug') {
     next();
   });
 }
+
+/**
+ * get memberId from jwt
+ */
+app.use((req: Request, res, next) => {
+  const jwt = req.headers['auth'];
+  if (jwt && typeof jwt === 'string') {
+    const curMemberId = decodeRoomMemberJwt(jwt).sub;
+    res.locals.memberId = curMemberId;
+    if (isDebug) {
+      console.log(`[from: ${curMemberId}]`);
+    }
+  }
+  next();
+});
 
 /**
  * Room
