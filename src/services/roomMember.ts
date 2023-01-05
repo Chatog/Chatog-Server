@@ -3,7 +3,7 @@ import RoomMemberMapper from '../data/roomMember';
 import { generateRoomMemberId } from '../utils/common';
 
 class RoomMemberService {
-  memberJoinRoom(roomId: string, roomMemberInit: RoomMember): string {
+  newMemberJoinRoom(roomId: string, roomMemberInit: RoomMember): string {
     const memberId = generateRoomMemberId();
     const member = {
       ...roomMemberInit,
@@ -19,10 +19,9 @@ class RoomMemberService {
     return memberId;
   }
 
-  isRoomOwner(memberId: string): boolean {
-    return MemberMapper.findMemberById(memberId).isRoomOwner;
-  }
-
+  /**
+   * @attention the first member is yourself, the second is room owner (if not yourself)
+   */
   getRoomMembers(roomId: string, memberId: string): RoomMember[] {
     const members = MemberMapper.findMembersByRoomId(roomId);
 
@@ -39,7 +38,6 @@ class RoomMemberService {
       }
     }
 
-    // the first member is yourself, the second is room owner (if not yourself)
     if (owner) ret.unshift(owner);
     ret.unshift(self!);
 

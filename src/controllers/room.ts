@@ -1,7 +1,7 @@
 import RoomService from '../services/room';
 import { Request, Router } from 'express';
 import { fail, success, Res } from './index';
-import roomMemberService from '../services/roomMember';
+import RoomMemberService from '../services/roomMember';
 import { RoomMember } from '../data/member';
 
 /**
@@ -80,12 +80,24 @@ roomController.get(
     try {
       const memberId = res.locals.memberId;
       res.send(
-        success(roomMemberService.getRoomMembers(req.query.roomId, memberId))
+        success(RoomMemberService.getRoomMembers(req.query.roomId, memberId))
       );
     } catch (e) {
       res.send(fail(e as string));
     }
   }
 );
+
+export interface ReqQuitRoomParam {
+  roomId: string;
+}
+roomController.post('/quit', (req, res) => {
+  try {
+    const memberId = res.locals.memberId;
+    res.send(success(RoomService.quitRoom(req.body.roomId, memberId)));
+  } catch (e) {
+    res.send(fail(e as string));
+  }
+});
 
 export default roomController;

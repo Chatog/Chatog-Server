@@ -18,11 +18,8 @@ class MemberMapper {
   // [memberId]: RoomMember
   members: Map<string, RoomMember> = new Map();
 
-  findMemberById(memberId: string): RoomMember {
-    const member = this.members.get(memberId);
-    if (!member) throw ERR_MEMBER_NOT_EXISTS;
-
-    return member;
+  findMemberById(memberId: string): RoomMember | undefined {
+    return this.members.get(memberId);
   }
 
   updateMember(member: RoomMember) {
@@ -30,8 +27,6 @@ class MemberMapper {
   }
 
   deleteMember(memberId: string) {
-    if (this.members.has(memberId)) throw ERR_MEMBER_NOT_EXISTS;
-
     this.members.delete(memberId);
   }
 
