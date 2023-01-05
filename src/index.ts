@@ -1,8 +1,10 @@
 import express, { Request } from 'express';
 import SERVER_CONFIG from '../configs/server.config.json';
 import cors from 'cors';
-import RoomController from './controllers/room';
+import { initRoomEventHandler, RoomController } from './controllers/room';
 import { decodeRoomMemberJwt } from './services/token';
+import { createServer } from 'http';
+import { initSocketIO } from './socket';
 
 const app = express();
 
@@ -48,7 +50,11 @@ app.use((req: Request, res, next) => {
  * Room
  */
 app.use('/room', RoomController);
+initRoomEventHandler();
 
-app.listen(SERVER_CONFIG.PORT, () => {
+const httpServer = createServer(app);
+initSocketIO(httpServer);
+
+httpServer.listen(SERVER_CONFIG.PORT, () => {
   console.log(`app listening on http://localhost:${SERVER_CONFIG.PORT}`);
 });

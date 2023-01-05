@@ -1,8 +1,4 @@
-import {
-  ERR_MEMBER_NOT_EXISTS,
-  ERR_OWNER_NOT_EXISTS,
-  ERR_ROOM_NOT_EXISTS
-} from '../utils/const';
+import { ERR_OWNER_NOT_EXISTS, ERR_ROOM_NOT_EXISTS } from '../utils/const';
 import RoomMemberMapper from './roomMember';
 
 export interface RoomMember {
