@@ -3,9 +3,10 @@ import { Request, Router } from 'express';
 import { fail, success, Res } from './index';
 import RoomMemberService from '../services/roomMember';
 import { RoomMember } from '../data/member';
-import { registerEventHandler } from '../socket/eventHandler';
+import { EventHandler, registerEventHandler } from '../socket/eventHandler';
 
 /**
+ * http api
  * @prefix /room
  */
 const RoomController = Router();
@@ -50,68 +51,46 @@ RoomController.post<ReqJoinRoomParam, Res<RoomInfo>>('/join', (req, res) => {
   }
 });
 
-export interface ReqGetRoomInfoParam {
-  roomId: string;
-}
-RoomController.get(
-  '/info',
-  (req: Request<null, Res<RoomInfo>, null, ReqGetRoomInfoParam>, res) => {
-    try {
-      res.send(success(RoomService.getRoomInfo(req.query.roomId)));
-    } catch (e) {
-      res.send(fail(e as string));
-    }
-  }
-);
-
-export interface ReqGetRoomMembersParam {
-  roomId: string;
-}
-RoomController.get(
-  '/members',
-  (
-    req: Request<
-      { memberId: string },
-      Res<RoomMember[]>,
-      null,
-      ReqGetRoomInfoParam
-    >,
-    res
-  ) => {
-    try {
-      const memberId = res.locals.memberId;
-      res.send(
-        success(RoomMemberService.getRoomMembers(req.query.roomId, memberId))
-      );
-    } catch (e) {
-      res.send(fail(e as string));
-    }
-  }
-);
-
-export interface ReqQuitRoomParam {
-  roomId: string;
-}
-RoomController.post('/quit', (req, res) => {
-  try {
-    const memberId = res.locals.memberId;
-    res.send(success(RoomService.quitRoom(req.body.roomId, memberId)));
-  } catch (e) {
-    res.send(fail(e as string));
-  }
-});
-
+/**
+ * socket api
+ */
 function initRoomEventHandler() {
-  registerEventHandler(
-    'roomInfo',
-    (socket, data: ReqGetRoomInfoParam, callback) => {
-      try {
-        callback(success(RoomService.getRoomInfo(data.roomId)));
-      } catch (e) {
-        callback(fail(e as string));
-      }
-    }
-  );
+  registerEventHandler('/room/info', handleGetRoomInfo);
+  registerEventHandler('/room/members', handleGetRoomMembers);
+  registerEventHandler('/room/quit', handleQuitRoom);
 }
+
+const handleGetRoomInfo: EventHandler<void> = (socket, _, callback) => {
+  try {
+    callback(success(RoomService.getRoomInfo(socket.data.roomId!)));
+  } catch (e) {
+    callback(fail(e as string));
+  }
+};
+
+const handleGetRoomMembers: EventHandler<void> = (socket, _, callback) => {
+  try {
+    callback(
+      success(
+        RoomMemberService.getRoomMembers(
+          socket.data.roomId!,
+          socket.data.memberId!
+        )
+      )
+    );
+  } catch (e) {
+    callback(fail(e as string));
+  }
+};
+
+const handleQuitRoom: EventHandler<void> = (socket, _, callback) => {
+  try {
+    callback(
+      success(RoomService.quitRoom(socket.data.roomId!, socket.data.memberId!))
+    );
+  } catch (e) {
+    callback(fail(e as string));
+  }
+};
 
 export { RoomController, initRoomEventHandler };

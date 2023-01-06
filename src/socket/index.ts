@@ -8,7 +8,7 @@ export function initSocketIO(server: Server) {
   io = new SocketServer(server, {
     // allow cors for dev
     cors: {
-      origin: 'http://localhost:3004'
+      origin: '*'
     }
   });
 

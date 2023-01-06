@@ -17,11 +17,11 @@ app.use(
 /* json parse */
 app.use(express.json());
 
-const isDebug = process.argv[2] === '--debug';
+export const IS_DEBUG = process.argv[2] === '--debug';
 // log req info in debug mode
-if (isDebug) {
-  app.use((req, res, next) => {
-    console.log(`[${req.method}] ${req.path}`);
+if (IS_DEBUG) {
+  app.use((req, _, next) => {
+    console.log(`[HTTP Request] ${req.method} ${req.path}`);
     if (req.method === 'GET') {
       console.log(req.query);
     } else {
@@ -33,14 +33,15 @@ if (isDebug) {
 
 /**
  * get memberId from jwt
+ * @TODO seems no need
  */
-app.use((req: Request, res, next) => {
+app.use((req, res, next) => {
   const jwt = req.headers['auth'];
   if (jwt && typeof jwt === 'string') {
     const curMemberId = decodeRoomMemberJwt(jwt).sub;
     res.locals.memberId = curMemberId;
-    if (isDebug) {
-      console.log(`[from: ${curMemberId}]`);
+    if (IS_DEBUG) {
+      console.log(`<== ${curMemberId}`);
     }
   }
   next();
