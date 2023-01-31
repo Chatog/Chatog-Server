@@ -2,9 +2,13 @@ import { Server } from 'http';
 import { Server as SocketServer } from 'socket.io';
 import { IS_DEBUG } from '..';
 import { memberIdToRoomId } from '../utils/common';
-import { setSocketHandlers } from './eventHandler';
+import { setSocketHandlers } from './event-handler';
 
 let io: SocketServer | null = null;
+
+export default function getSocketServer() {
+  return io;
+}
 
 export function initSocketIO(server: Server) {
   io = new SocketServer(server, {

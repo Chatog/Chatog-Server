@@ -1,9 +1,9 @@
-import MemberMapper, { RoomMember } from '../data/member';
+import MemberMapper from '../data/member';
 import RoomMapper from '../data/room';
 import { ERR_ROOM_NOT_EXISTS } from '../utils/const';
 import { RoomMemberVO } from '../controllers/room';
 
-class RoomMemberService {
+class MemberService {
   /**
    * @attention the first member is yourself, the second is room owner (if not yourself)
    */
@@ -37,6 +37,6 @@ class RoomMemberService {
   }
 }
 
-const roomMemberService = new RoomMemberService();
+const memberService = new MemberService();
 
-export default roomMemberService;
+export default memberService;
