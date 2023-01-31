@@ -6,6 +6,8 @@ export interface Room {
   banAudio: boolean;
   banScreen: boolean;
   banChat: boolean;
+  memberIds: string[];
+  roomOwnerId: string;
 }
 
 class RoomMapper {

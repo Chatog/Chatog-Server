@@ -1,7 +1,7 @@
 import RoomService from '../services/room';
-import { Request, Router } from 'express';
+import { Router } from 'express';
 import { fail, success, Res } from './index';
-import RoomMemberService from '../services/roomMember';
+import RoomMemberService from '../services/member';
 import { RoomMember } from '../data/member';
 import { EventHandler, registerEventHandler } from '../socket/eventHandler';
 
@@ -11,6 +11,7 @@ import { EventHandler, registerEventHandler } from '../socket/eventHandler';
  */
 const RoomController = Router();
 
+// create room
 export interface ReqCreateRoomParam {
   nickname: string;
   roomName: string;
@@ -19,35 +20,26 @@ export interface ReqCreateRoomParam {
   banScreen: boolean;
   banChat: boolean;
 }
-export interface RoomInfo {
-  roomId: string;
-  roomName: string;
-  roomStartTime: number;
-}
-RoomController.post<ReqCreateRoomParam, Res<RoomInfo>>(
-  '/create',
-  (req, res) => {
-    try {
-      const roomInfoWithToken = RoomService.createRoom(req.body);
-      res.setHeader('set-auth', roomInfoWithToken.token);
-      res.send(success(roomInfoWithToken));
-    } catch (e) {
-      res.send(fail(e as string));
-    }
+RoomController.post<ReqCreateRoomParam, Res<string>>('/create', (req, res) => {
+  try {
+    const memberId = RoomService.createRoom(req.body);
+    res.send(success(memberId));
+  } catch (e) {
+    res.send(fail(e));
   }
-);
+});
 
+// join room
 export interface ReqJoinRoomParam {
   nickname: string;
   roomNumber: string;
 }
-RoomController.post<ReqJoinRoomParam, Res<RoomInfo>>('/join', (req, res) => {
+RoomController.post<ReqJoinRoomParam, Res<string>>('/join', (req, res) => {
   try {
-    const roomInfoWithToken = RoomService.joinRoom(req.body);
-    res.setHeader('set-auth', roomInfoWithToken.token);
-    res.send(success(roomInfoWithToken));
+    const memberId = RoomService.joinRoom(req.body);
+    res.send(success(memberId));
   } catch (e) {
-    res.send(fail(e as string));
+    res.send(fail(e));
   }
 });
 
@@ -55,20 +47,39 @@ RoomController.post<ReqJoinRoomParam, Res<RoomInfo>>('/join', (req, res) => {
  * socket api
  */
 function initRoomEventHandler() {
-  registerEventHandler('/room/info', handleGetRoomInfo);
-  registerEventHandler('/room/members', handleGetRoomMembers);
-  registerEventHandler('/room/quit', handleQuitRoom);
+  const prefix = '/room';
+  registerEventHandler(prefix + '/info', handleGetRoomInfo);
+  registerEventHandler(prefix + '/members', handleGetRoomMembers);
+  registerEventHandler(prefix + '/quit', handleQuitRoom);
 }
 
-const handleGetRoomInfo: EventHandler<void> = (socket, _, callback) => {
+// get room info
+export interface RoomInfo {
+  roomId: string;
+  roomName: string;
+  roomStartTime: number;
+}
+const handleGetRoomInfo: EventHandler<Res<RoomInfo>> = (
+  socket,
+  _,
+  callback
+) => {
   try {
     callback(success(RoomService.getRoomInfo(socket.data.roomId!)));
   } catch (e) {
-    callback(fail(e as string));
+    callback(fail(e));
   }
 };
 
-const handleGetRoomMembers: EventHandler<void> = (socket, _, callback) => {
+export interface RoomMemberVO extends RoomMember {
+  isRoomOwner: boolean;
+}
+// get room members
+const handleGetRoomMembers: EventHandler<Res<RoomMemberVO[]>> = (
+  socket,
+  _,
+  callback
+) => {
   try {
     callback(
       success(
@@ -79,17 +90,18 @@ const handleGetRoomMembers: EventHandler<void> = (socket, _, callback) => {
       )
     );
   } catch (e) {
-    callback(fail(e as string));
+    callback(fail(e));
   }
 };
 
-const handleQuitRoom: EventHandler<void> = (socket, _, callback) => {
+// quit room
+const handleQuitRoom: EventHandler<Res<void>> = (socket, _, callback) => {
   try {
     callback(
       success(RoomService.quitRoom(socket.data.roomId!, socket.data.memberId!))
     );
   } catch (e) {
-    callback(fail(e as string));
+    callback(fail(e));
   }
 };
 

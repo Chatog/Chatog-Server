@@ -3,66 +3,69 @@ import {
   ReqJoinRoomParam,
   RoomInfo
 } from '../controllers/room';
-import { generateRoomId } from '../utils/common';
+import { generateRoomId, generateMemberId } from '../utils/common';
 import { ERR_MEMBER_NOT_EXISTS, ERR_ROOM_NOT_EXISTS } from '../utils/const';
-import { encodeRoomMemberJwt } from './token';
-import RoomMemberService from './roomMember';
+import RoomMemberService from './member';
 import RoomMapper, { Room } from '../data/room';
-import RoomMemberMapper from '../data/roomMember';
 import MemberMapper from '../data/member';
 
-export interface RoomInfoWithToken extends RoomInfo {
-  token: string;
-}
-
 class RoomService {
-  createRoom(param: ReqCreateRoomParam): RoomInfoWithToken {
+  /**
+   * create room, create room owner and join
+   * @returns memberId
+   */
+  createRoom(param: ReqCreateRoomParam): string {
     const roomId = generateRoomId();
-    const newRoom: Room = {
+    const room: Room = {
       roomId,
       roomStartTime: Date.now(),
+      roomOwnerId: '',
+      memberIds: [],
       ...param
     };
-    RoomMapper.updateRoom(newRoom);
 
-    const memberId = RoomMemberService.newMemberJoinRoom(roomId, {
-      memberId: '',
+    const memberId = generateMemberId(roomId);
+    const member = {
+      memberId,
       nickname: param.nickname,
-      isRoomOwner: true,
       // room owner will not be banned
       banVideo: false,
       banAudio: false,
       banScreen: false
-    });
-
-    const token = encodeRoomMemberJwt(memberId);
-
-    return {
-      ...newRoom,
-      token
     };
-  }
 
-  joinRoom(param: ReqJoinRoomParam): RoomInfoWithToken {
+    room.memberIds.push(memberId);
+    room.roomOwnerId = memberId;
+
+    MemberMapper.updateMember(member);
+    RoomMapper.updateRoom(room);
+
+    return memberId;
+  }
+  /**
+   * create member and join
+   * @returns memberId
+   */
+  joinRoom(param: ReqJoinRoomParam): string {
     const room = RoomMapper.findRoomById(param.roomNumber);
     if (!room) throw ERR_ROOM_NOT_EXISTS;
 
-    const memberId = RoomMemberService.newMemberJoinRoom(room.roomId, {
-      memberId: '',
+    const memberId = generateMemberId(room.roomId);
+    const member = {
+      memberId,
       nickname: param.nickname,
-      isRoomOwner: false,
       // room config decides member auths
       banVideo: room.banVideo,
       banAudio: room.banAudio,
       banScreen: room.banScreen
-    });
-
-    const token = encodeRoomMemberJwt(memberId);
-
-    return {
-      ...room,
-      token
     };
+
+    room.memberIds.push(memberId);
+
+    MemberMapper.updateMember(member);
+    RoomMapper.updateRoom(room);
+
+    return memberId;
   }
 
   getRoomInfo(roomId: string): RoomInfo {
@@ -72,26 +75,30 @@ class RoomService {
     return room;
   }
 
+  /**
+   * member quit room, stop media and close socket
+   */
   quitRoom(roomId: string, memberId: string) {
-    const memberIds = RoomMemberMapper.findMemberIdsByRoomId(roomId);
-    if (!memberIds) throw ERR_ROOM_NOT_EXISTS;
+    const room = RoomMapper.findRoomById(roomId);
+    if (!room) throw ERR_ROOM_NOT_EXISTS;
+
+    const memberIds = room.memberIds;
 
     const memberIndex = memberIds.indexOf(memberId);
     const member = MemberMapper.findMemberById(memberId);
     if (memberIndex === -1 || !member) throw ERR_MEMBER_NOT_EXISTS;
 
     MemberMapper.deleteMember(memberId);
-    // @TODO release webrtc connections
+    // @TODO stop media
+    // @TODO close socket
 
-    // just member quit, no need to delete members and room
-    if (!member.isRoomOwner) {
+    // member quit or owner quit
+    if (member.memberId === room.roomOwnerId) {
       memberIds.splice(memberIndex, 1);
-      RoomMemberMapper.updateRoomMembers(roomId, memberIds);
-      return;
+      RoomMapper.updateRoom(room);
+    } else {
+      RoomMapper.deleteRoom(roomId);
     }
-
-    RoomMemberMapper.deleteRoomMembers(roomId);
-    RoomMapper.deleteRoom(roomId);
   }
 }
 

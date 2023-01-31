@@ -1,5 +1,9 @@
-import { ERR_OWNER_NOT_EXISTS, ERR_ROOM_NOT_EXISTS } from '../utils/const';
-import RoomMemberMapper from './roomMember';
+import {
+  ERR_MEMBER_NOT_EXISTS,
+  ERR_OWNER_NOT_EXISTS,
+  ERR_ROOM_NOT_EXISTS
+} from '../utils/const';
+import RoomMapper from './room';
 
 export interface RoomMember {
   memberId: string;
@@ -7,7 +11,6 @@ export interface RoomMember {
   banVideo: boolean;
   banAudio: boolean;
   banScreen: boolean;
-  isRoomOwner: boolean;
 }
 
 class MemberMapper {
@@ -30,23 +33,10 @@ class MemberMapper {
    * join query
    */
   findMembersByRoomId(roomId: string): RoomMember[] {
-    const memberIds = RoomMemberMapper.findMemberIdsByRoomId(roomId);
-    if (!memberIds) throw ERR_ROOM_NOT_EXISTS;
+    const room = RoomMapper.findRoomById(roomId);
+    if (!room) throw ERR_ROOM_NOT_EXISTS;
 
-    return memberIds.map((memberId) => this.members.get(memberId)!);
-  }
-
-  findOwnerByRoomId(roomId: string): RoomMember {
-    const memberIds = RoomMemberMapper.findMemberIdsByRoomId(roomId);
-    if (!memberIds) throw ERR_ROOM_NOT_EXISTS;
-
-    for (const memberId of memberIds) {
-      const member = this.members.get(memberId);
-      if (member?.isRoomOwner) {
-        return member;
-      }
-    }
-    throw ERR_OWNER_NOT_EXISTS;
+    return room.memberIds.map((memberId) => this.members.get(memberId)!);
   }
 }
 

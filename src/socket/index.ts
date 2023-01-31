@@ -1,5 +1,7 @@
 import { Server } from 'http';
 import { Server as SocketServer } from 'socket.io';
+import { IS_DEBUG } from '..';
+import { memberIdToRoomId } from '../utils/common';
 import { setSocketHandlers } from './eventHandler';
 
 let io: SocketServer | null = null;
@@ -13,8 +15,14 @@ export function initSocketIO(server: Server) {
   });
 
   io.on('connection', (socket) => {
-    // client will pass roomId and memberId just when connect
-    const { roomId, memberId } = socket.handshake.auth;
+    // client will pass roomId just when connect
+    const { memberId } = socket.handshake.auth;
+    const roomId = memberIdToRoomId(memberId);
+
+    if (IS_DEBUG) {
+      console.log(`[socket] connect:`, memberId);
+    }
+
     socket.data.memberId = memberId;
     socket.data.roomId = roomId;
 

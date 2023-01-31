@@ -1,8 +1,6 @@
 import { Socket } from 'socket.io';
 import { IS_DEBUG } from '..';
 
-export type Callback = (v: any) => void;
-
 export type EventHandler<T> = (
   socket: Socket<
     any,
@@ -14,7 +12,7 @@ export type EventHandler<T> = (
     }
   >,
   data: T,
-  callback: Callback
+  callback: (v: T) => void
 ) => void;
 
 const eventHandlers: Map<string, EventHandler<any>> = new Map();
@@ -32,7 +30,6 @@ export function setSocketHandlers(socket: Socket) {
     socket.on(eventName, (data, callback) => {
       if (IS_DEBUG) {
         console.log('[Socket Request]', eventName, data);
-        console.log(socket.data);
       }
       handler(socket, data, callback);
     });

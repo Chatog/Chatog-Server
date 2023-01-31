@@ -2,7 +2,6 @@ import express, { Request } from 'express';
 import SERVER_CONFIG from '../configs/server.config.json';
 import cors from 'cors';
 import { initRoomEventHandler, RoomController } from './controllers/room';
-import { decodeRoomMemberJwt } from './services/token';
 import { createServer } from 'http';
 import { initSocketIO } from './socket';
 
@@ -30,22 +29,6 @@ if (IS_DEBUG) {
     next();
   });
 }
-
-/**
- * get memberId from jwt
- * @TODO seems no need
- */
-app.use((req, res, next) => {
-  const jwt = req.headers['auth'];
-  if (jwt && typeof jwt === 'string') {
-    const curMemberId = decodeRoomMemberJwt(jwt).sub;
-    res.locals.memberId = curMemberId;
-    if (IS_DEBUG) {
-      console.log(`<== ${curMemberId}`);
-    }
-  }
-  next();
-});
 
 /**
  * Room

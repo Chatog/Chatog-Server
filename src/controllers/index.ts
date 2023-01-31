@@ -17,10 +17,11 @@ export function success<T>(data: T): Res<T> {
   };
 }
 
-export function fail(msg: string): Res<any> {
+export function fail(err: any): Res<any> {
+  console.error(err);
   return {
     code: ResCode.ERROR_MSG,
-    msg,
+    msg: err.message,
     data: null
   };
 }
