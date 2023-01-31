@@ -1,13 +1,15 @@
 import { Server } from 'http';
-import { Server as SocketServer } from 'socket.io';
+import { RemoteSocket, Server as SocketServer, Socket } from 'socket.io';
+import { DefaultEventsMap } from 'socket.io/dist/typed-events';
 import { IS_DEBUG } from '..';
 import { memberIdToRoomId } from '../utils/common';
 import { setSocketHandlers } from './event-handler';
 
 let io: SocketServer | null = null;
 
-export default function getSocketServer() {
-  return io;
+export interface ChatogSocketData {
+  memberId: string;
+  roomId: string;
 }
 
 export function initSocketIO(server: Server) {
@@ -41,4 +43,36 @@ export function initSocketIO(server: Server) {
   });
 
   console.log('socket.io server started');
+}
+
+/**
+ * broadcast msg to all clients except some
+ * @param roomId
+ * @param exceptCondition judge whether a socket should be excepted
+ * @param event
+ * @param dataGenerator data or function to generate data via socket instance
+ */
+export function broadcastExcept(
+  roomId: string,
+  exceptCondition: (
+    s: RemoteSocket<DefaultEventsMap, ChatogSocketData>
+  ) => boolean,
+  event: string,
+  dataGenerator: (
+    s: RemoteSocket<DefaultEventsMap, ChatogSocketData>
+  ) => any | any
+) {
+  io?.in(roomId)
+    .fetchSockets()
+    .then((sockets) => {
+      for (const socket of sockets) {
+        if (exceptCondition(socket)) continue;
+
+        const data =
+          typeof dataGenerator === 'function'
+            ? dataGenerator(socket)
+            : dataGenerator;
+        socket.emit(event, data);
+      }
+    });
 }

@@ -1,4 +1,4 @@
-import io from '../socket';
+import { broadcastExcept } from '../socket';
 import MemberService from './member';
 
 const SYNC_TYPE = {
@@ -7,21 +7,13 @@ const SYNC_TYPE = {
 
 class SyncService {
   syncRoomMembers(roomId: string, memberId: string) {
-    io()
-      ?.in(roomId)
-      .fetchSockets()
-      .then((sockets) => {
-        for (const socket of sockets) {
-          if (socket.data.memberId === memberId) continue;
-          socket.emit(
-            SYNC_TYPE.SYNC_ROOM_MEMBERS,
-            MemberService.getRoomMembers(
-              socket.data.roomId,
-              socket.data.memberId
-            )
-          );
-        }
-      });
+    broadcastExcept(
+      roomId,
+      (socket) => socket.data.memberId === memberId,
+      SYNC_TYPE.SYNC_ROOM_MEMBERS,
+      (socket) =>
+        MemberService.getRoomMembers(socket.data.roomId, socket.data.memberId)
+    );
   }
 }
 
