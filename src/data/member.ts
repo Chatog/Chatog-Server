@@ -1,6 +1,4 @@
 import {
-  ERR_MEMBER_NOT_EXISTS,
-  ERR_OWNER_NOT_EXISTS,
   ERR_ROOM_NOT_EXISTS
 } from '../utils/const';
 import RoomMapper from './room';
@@ -34,7 +32,7 @@ class MemberMapper {
    */
   findMembersByRoomId(roomId: string): RoomMember[] {
     const room = RoomMapper.findRoomById(roomId);
-    if (!room) throw ERR_ROOM_NOT_EXISTS;
+    if (!room) throw new Error(ERR_ROOM_NOT_EXISTS);
 
     return room.memberIds.map((memberId) => this.members.get(memberId)!);
   }

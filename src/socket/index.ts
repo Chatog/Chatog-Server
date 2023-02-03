@@ -2,15 +2,21 @@ import { Server } from 'http';
 import { RemoteSocket, Server as SocketServer, Socket } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
 import { IS_DEBUG } from '..';
+import RoomService from '../services/room';
 import { memberIdToRoomId } from '../utils/common';
 import { setSocketHandlers } from './event-handler';
-
-let io: SocketServer | null = null;
 
 export interface ChatogSocketData {
   memberId: string;
   roomId: string;
 }
+
+let io: SocketServer<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  ChatogSocketData
+> | null = null;
 
 export function initSocketIO(server: Server) {
   io = new SocketServer(server, {
@@ -36,7 +42,14 @@ export function initSocketIO(server: Server) {
 
     socket.on('disconnect', (e) => {
       console.log(`socket[${memberId}][${roomId}] disconnect:`, e);
-      // @TODO do something when exception exit
+      // if client side cause socket disconnect, we must call quitRoom
+      if (
+        e === 'client namespace disconnect' ||
+        e === 'transport close' ||
+        e === 'transport error'
+      ) {
+        RoomService.quitRoom(roomId, memberId);
+      }
     });
 
     setSocketHandlers(socket);
@@ -45,6 +58,9 @@ export function initSocketIO(server: Server) {
   console.log('socket.io server started');
 }
 
+type DataGenerator = (
+  s: RemoteSocket<DefaultEventsMap, ChatogSocketData>
+) => any | any;
 /**
  * broadcast msg to all clients except some
  * @param roomId
@@ -58,9 +74,7 @@ export function broadcastExcept(
     s: RemoteSocket<DefaultEventsMap, ChatogSocketData>
   ) => boolean,
   event: string,
-  dataGenerator: (
-    s: RemoteSocket<DefaultEventsMap, ChatogSocketData>
-  ) => any | any
+  dataGenerator: DataGenerator
 ) {
   io?.in(roomId)
     .fetchSockets()
@@ -73,6 +87,29 @@ export function broadcastExcept(
             ? dataGenerator(socket)
             : dataGenerator;
         socket.emit(event, data);
+      }
+    });
+}
+export function broadcast(
+  roomId: string,
+  event: string,
+  dataGenerator: DataGenerator
+) {
+  broadcastExcept(roomId, () => false, event, dataGenerator);
+}
+
+/**
+ * close socket of a specific member
+ */
+export function closeSocket(memberId: string) {
+  io?.in(memberIdToRoomId(memberId))
+    .fetchSockets()
+    .then((sockets) => {
+      const memberSocket = sockets.find(
+        (socket) => socket.data.memberId === memberId
+      );
+      if (memberSocket) {
+        memberSocket.disconnect();
       }
     });
 }

@@ -6,10 +6,10 @@ export enum ResCode {
 export interface Res<T> {
   code: ResCode;
   msg: string;
-  data: T;
+  data?: T;
 }
 
-export function success<T>(data: T): Res<T> {
+export function success<T>(data?: T): Res<T> {
   return {
     code: ResCode.SUCCESS,
     msg: '',

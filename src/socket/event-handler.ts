@@ -1,15 +1,14 @@
 import { Socket } from 'socket.io';
+import { DefaultEventsMap } from 'socket.io/dist/typed-events';
+import { ChatogSocketData } from '.';
 import { IS_DEBUG } from '..';
 
 export type EventHandler<T> = (
   socket: Socket<
-    any,
-    any,
-    any,
-    {
-      roomId: string;
-      memberId: string;
-    }
+    DefaultEventsMap,
+    DefaultEventsMap,
+    DefaultEventsMap,
+    ChatogSocketData
   >,
   data: T,
   callback: (v: T) => void

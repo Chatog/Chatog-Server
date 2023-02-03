@@ -4,10 +4,11 @@ import {
   RoomInfo
 } from '../controllers/room';
 import { generateRoomId, generateMemberId } from '../utils/common';
-import { ERR_MEMBER_NOT_EXISTS, ERR_ROOM_NOT_EXISTS } from '../utils/const';
-import RoomMemberService from './member';
+import { ERR_ROOM_NOT_EXISTS } from '../utils/const';
 import RoomMapper, { Room } from '../data/room';
 import MemberMapper from '../data/member';
+import SyncService from './sync';
+import MemberService from './member';
 
 class RoomService {
   /**
@@ -48,7 +49,7 @@ class RoomService {
    */
   joinRoom(param: ReqJoinRoomParam): string {
     const room = RoomMapper.findRoomById(param.roomNumber);
-    if (!room) throw ERR_ROOM_NOT_EXISTS;
+    if (!room) throw new Error(ERR_ROOM_NOT_EXISTS);
 
     const memberId = generateMemberId(room.roomId);
     const member = {
@@ -65,39 +66,42 @@ class RoomService {
     MemberMapper.updateMember(member);
     RoomMapper.updateRoom(room);
 
+    SyncService.syncRoomMembers(param.roomNumber, memberId);
+
     return memberId;
   }
 
   getRoomInfo(roomId: string): RoomInfo {
     const room = RoomMapper.findRoomById(roomId);
-    if (!room) throw ERR_ROOM_NOT_EXISTS;
+    if (!room) throw new Error(ERR_ROOM_NOT_EXISTS);
 
     return room;
   }
 
   /**
-   * member quit room, stop media and close socket
+   * member quit room, update members and room info
    */
   quitRoom(roomId: string, memberId: string) {
     const room = RoomMapper.findRoomById(roomId);
-    if (!room) throw ERR_ROOM_NOT_EXISTS;
+    if (!room) throw new Error(ERR_ROOM_NOT_EXISTS);
 
     const memberIds = room.memberIds;
 
-    const memberIndex = memberIds.indexOf(memberId);
-    const member = MemberMapper.findMemberById(memberId);
-    if (memberIndex === -1 || !member) throw ERR_MEMBER_NOT_EXISTS;
-
-    MemberMapper.deleteMember(memberId);
-    // @TODO stop media
-    // @TODO close socket
-
-    // member quit or owner quit
-    if (member.memberId === room.roomOwnerId) {
-      memberIds.splice(memberIndex, 1);
-      RoomMapper.updateRoom(room);
-    } else {
+    // owner quit
+    if (memberId === room.roomOwnerId) {
+      // release all members in room
+      memberIds.forEach((mid) => MemberService.memberQuit(mid));
       RoomMapper.deleteRoom(roomId);
+    }
+    // member quit
+    else {
+      MemberService.memberQuit(memberId);
+
+      memberIds.splice(memberIds.indexOf(memberId), 1);
+      RoomMapper.updateRoom(room);
+
+      // still has members in room, should sync
+      SyncService.syncRoomMembers(roomId, memberId);
     }
   }
 }

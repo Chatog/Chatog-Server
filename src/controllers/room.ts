@@ -27,7 +27,6 @@ RoomController.post<any, any, any, ReqCreateRoomParam, Res<string>>(
   (req, res) => {
     try {
       const memberId = RoomService.createRoom(req.body);
-      SyncService.syncRoomMembers(memberIdToRoomId(memberId), memberId);
       res.send(success(memberId));
     } catch (e) {
       res.send(fail(e));
@@ -45,7 +44,6 @@ RoomController.post<any, any, any, ReqJoinRoomParam, Res<string>>(
   (req, res) => {
     try {
       const memberId = RoomService.joinRoom(req.body);
-      SyncService.syncRoomMembers(req.body.roomNumber, memberId);
       res.send(success(memberId));
     } catch (e) {
       res.send(fail(e));
@@ -107,9 +105,8 @@ const handleGetRoomMembers: EventHandler<Res<RoomMemberVO[]>> = (
 // quit room
 const handleQuitRoom: EventHandler<Res<void>> = (socket, _, callback) => {
   try {
-    callback(
-      success(RoomService.quitRoom(socket.data.roomId!, socket.data.memberId!))
-    );
+    RoomService.quitRoom(socket.data.roomId!, socket.data.memberId!);
+    callback(success());
   } catch (e) {
     callback(fail(e));
   }

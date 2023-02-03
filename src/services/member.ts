@@ -1,7 +1,8 @@
 import MemberMapper from '../data/member';
 import RoomMapper from '../data/room';
-import { ERR_ROOM_NOT_EXISTS } from '../utils/const';
+import { ERR_MEMBER_NOT_EXISTS, ERR_ROOM_NOT_EXISTS } from '../utils/const';
 import { RoomMemberVO } from '../controllers/room';
+import { closeSocket } from '../socket';
 
 class MemberService {
   /**
@@ -9,7 +10,7 @@ class MemberService {
    */
   getRoomMembers(roomId: string, memberId: string): RoomMemberVO[] {
     const room = RoomMapper.findRoomById(roomId);
-    if (!room) throw ERR_ROOM_NOT_EXISTS;
+    if (!room) throw new Error(ERR_ROOM_NOT_EXISTS);
 
     const members = MemberMapper.findMembersByRoomId(roomId);
 
@@ -34,6 +35,20 @@ class MemberService {
     ret.unshift(self!);
 
     return ret;
+  }
+
+  /**
+   * clean all info relative to quited member
+   */
+  memberQuit(memberId: string) {
+    const member = MemberMapper.findMemberById(memberId);
+    if (!member) throw new Error(ERR_MEMBER_NOT_EXISTS);
+
+    MemberMapper.deleteMember(memberId);
+
+    // @TODO stop media
+    // stop socket
+    closeSocket(memberId);
   }
 }
 
