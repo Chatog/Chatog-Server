@@ -27,9 +27,6 @@ export function setSocketHandlers(socket: Socket) {
   for (const eventName of eventHandlers.keys()) {
     const handler = eventHandlers.get(eventName)!;
     socket.on(eventName, (data, callback) => {
-      if (IS_DEBUG) {
-        console.log('[Socket Request]', eventName, data);
-      }
       handler(socket, data, callback);
     });
   }

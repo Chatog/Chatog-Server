@@ -1,5 +1,5 @@
 import { Server } from 'http';
-import { RemoteSocket, Server as SocketServer, Socket } from 'socket.io';
+import { RemoteSocket, Server as SocketServer } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
 import { IS_DEBUG } from '..';
 import RoomService from '../services/room';
@@ -11,13 +11,14 @@ export interface ChatogSocketData {
   roomId: string;
 }
 
-let io: SocketServer<
+export type ChatogServer = SocketServer<
   DefaultEventsMap,
   DefaultEventsMap,
   DefaultEventsMap,
   ChatogSocketData
-> | null = null;
+>;
 
+let io: ChatogServer | null = null;
 export function initSocketIO(server: Server) {
   io = new SocketServer(server, {
     // allow cors for dev
@@ -52,15 +53,24 @@ export function initSocketIO(server: Server) {
       }
     });
 
+    if (IS_DEBUG) {
+      socket.use(([event, payload], next) => {
+        console.debug('[socket] on:', event, JSON.stringify(payload));
+        next();
+      });
+    }
+
     setSocketHandlers(socket);
   });
 
-  console.log('socket.io server started');
+  console.log('[socket] socket.io server started');
+
+  return io;
 }
 
 type DataGenerator = (
   s: RemoteSocket<DefaultEventsMap, ChatogSocketData>
-) => any | any;
+) => any;
 /**
  * broadcast msg to all clients except some
  * @param roomId
@@ -74,7 +84,7 @@ export function broadcastExcept(
     s: RemoteSocket<DefaultEventsMap, ChatogSocketData>
   ) => boolean,
   event: string,
-  dataGenerator: DataGenerator
+  dataGenerator: number | string | Record<string, any> | DataGenerator
 ) {
   io?.in(roomId)
     .fetchSockets()

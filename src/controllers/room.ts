@@ -4,7 +4,7 @@ import { fail, success, Res } from './index';
 import RoomMemberService from '../services/member';
 import { RoomMember } from '../data/member';
 import { EventHandler, registerEventHandler } from '../socket/event-handler';
-import SyncService from '../services/sync';
+import MediaManager from '../media';
 import { memberIdToRoomId } from '../utils/common';
 
 /**
@@ -24,9 +24,13 @@ export interface ReqCreateRoomParam {
 }
 RoomController.post<any, any, any, ReqCreateRoomParam, Res<string>>(
   '/create',
-  (req, res) => {
+  async (req, res) => {
     try {
       const memberId = RoomService.createRoom(req.body);
+
+      // need to create a router for each room
+      await MediaManager.createRouter(memberIdToRoomId(memberId));
+
       res.send(success(memberId));
     } catch (e) {
       res.send(fail(e));

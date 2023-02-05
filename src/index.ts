@@ -1,9 +1,13 @@
-import express, { Request } from 'express';
+import express from 'express';
 import SERVER_CONFIG from '../configs/server.config.json';
 import cors from 'cors';
 import { initRoomEventHandler, RoomController } from './controllers/room';
 import { createServer } from 'http';
 import { initSocketIO } from './socket';
+import MediaManager from './media';
+import MediaService from './services/media';
+
+export const IS_DEBUG = process.argv[2] === '--debug';
 
 const app = express();
 
@@ -16,7 +20,6 @@ app.use(
 /* json parse */
 app.use(express.json());
 
-export const IS_DEBUG = process.argv[2] === '--debug';
 // log req info in debug mode
 if (IS_DEBUG) {
   app.use((req, _, next) => {
@@ -37,8 +40,13 @@ app.use('/room', RoomController);
 initRoomEventHandler();
 
 const httpServer = createServer(app);
-initSocketIO(httpServer);
+// init socket
+const socketServer = initSocketIO(httpServer);
+// init media manager
+MediaManager.init(socketServer, MediaService.onMediaPub);
 
 httpServer.listen(SERVER_CONFIG.PORT, () => {
-  console.log(`app listening on http://localhost:${SERVER_CONFIG.PORT}`);
+  console.log(
+    `[index.ts] app listening on http://localhost:${SERVER_CONFIG.PORT}`
+  );
 });
