@@ -6,6 +6,14 @@ const SYNC_TYPE = {
   SYNC_MEDIA: 'SYNC_MEDIA'
 };
 
+export interface MediaSyncInfo {
+  type: 'add' | 'remove';
+  imid: string;
+  nickname?: string;
+  audioId?: string;
+  videoId?: string;
+}
+
 class SyncService {
   syncRoomMembers(roomId: string, memberId: string) {
     broadcastExcept(
@@ -17,14 +25,12 @@ class SyncService {
     );
   }
 
-  syncMedia(roomId: string, memberId: string, mediaId: string) {
+  syncMedia(roomId: string, memberId: string, info: MediaSyncInfo) {
     broadcastExcept(
       roomId,
       (socket) => socket.data.memberId === memberId,
       SYNC_TYPE.SYNC_MEDIA,
-      {
-        mediaId
-      }
+      info
     );
   }
 }

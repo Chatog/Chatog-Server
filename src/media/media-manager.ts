@@ -5,8 +5,7 @@ import {
   Transport,
   Producer,
   Consumer,
-  RtpCapabilities,
-  WebRtcServer
+  RtpCapabilities
 } from 'mediasoup/node/lib/types';
 import config from './media-config';
 import { fail, success } from '../controllers';
@@ -28,12 +27,7 @@ export enum SignalingEvent {
   closeConsumer = 'closeConsumer'
 }
 
-export type OnProducerCallback = (
-  socket: Socket,
-  info: {
-    producerId: string;
-  }
-) => void;
+export type OnProducerCallback = (socket: Socket, producer: Producer) => void;
 
 /**
  * class
@@ -41,6 +35,7 @@ export type OnProducerCallback = (
 export class MediaManagerServer {
   private _debug: boolean;
   private _onProducer?: OnProducerCallback;
+  private _onProducerClose?: OnProducerCallback;
 
   private _worker?: Worker;
   private _routers: Map<string, Router> = new Map();
@@ -67,6 +62,36 @@ export class MediaManagerServer {
 
   private initSignaling(server: Server) {
     server.on('connection', (socket) => {
+      // clean media when signaling disconnect
+      socket.on('disconnect', () => {
+        console.log(`[media-manager] socket[${socket.id}] clean media`);
+
+        const socketMedia = this._socketMedias.get(socket.id);
+        if (!socketMedia) return;
+        // clean producers
+        socketMedia.producers.forEach((id, _) => {
+          const producer = this._producers.get(id);
+          if (producer) {
+            producer.close();
+            if (this._onProducerClose) {
+              this._onProducerClose(socket, producer);
+            }
+          }
+          this._producers.delete(id);
+        });
+        // clean consumers
+        socketMedia.consumers.forEach((id, _) => {
+          this._consumers.get(id)?.close();
+          this._consumers.delete(id);
+        });
+        // clean transport
+        socketMedia.sendTransport &&
+          this._transports.delete(socketMedia.sendTransport);
+        socketMedia.recvTransport &&
+          this._transports.delete(socketMedia.recvTransport);
+        // clean socketMedia
+        this._socketMedias.delete(socket.id);
+      });
       /**
        * init client request handlers
        */
@@ -183,17 +208,20 @@ export class MediaManagerServer {
             appData
           });
           producer.on('transportclose', () => {
+            producer.close();
             this._producers.delete(producer.id);
+            if (this._onProducerClose) {
+              this._onProducerClose(socket, producer);
+            }
           });
 
           this._producers.set(producer.id, producer);
+          this._socketMedias.get(socket.id)!.producers.add(producer.id);
 
           callback(success(producer.id));
 
           if (this._onProducer) {
-            this._onProducer(socket, {
-              producerId: producer.id
-            });
+            this._onProducer(socket, producer);
           }
         }
       );
@@ -243,24 +271,24 @@ export class MediaManagerServer {
             );
             return;
           }
-          console.log(options);
           // create consumer
           const consumer = await transport.consume({
             producerId,
             rtpCapabilities,
-            paused: true,
-            appData: {
-              from: options.producerId,
-              to: socket.id
-            }
+            paused: true
           });
-          this._consumers.set(consumer.id, consumer);
+
           consumer.on('transportclose', () => {
+            consumer.close();
             this._consumers.delete(consumer.id);
           });
           consumer.on('producerclose', () => {
+            consumer.close();
             this._consumers.delete(consumer.id);
           });
+
+          this._consumers.set(consumer.id, consumer);
+          this._socketMedias.get(socket.id)!.consumers.add(consumer.id);
           callback(
             success({
               id: consumer.id,
@@ -298,6 +326,11 @@ export class MediaManagerServer {
           }
           producer.close();
           this._producers.delete(producer.id);
+
+          if (this._onProducerClose) {
+            this._onProducerClose(socket, producer);
+          }
+
           callback(success());
         }
       );
@@ -319,8 +352,13 @@ export class MediaManagerServer {
     console.log('[media-manager] socket ready');
   }
 
-  async init(signalingServer: Server, onProducer?: OnProducerCallback) {
+  async init(
+    signalingServer: Server,
+    onProducer?: OnProducerCallback,
+    onProducerClose?: OnProducerCallback
+  ) {
     this._onProducer = onProducer;
+    this._onProducerClose = onProducerClose;
 
     this.initSignaling(signalingServer);
 

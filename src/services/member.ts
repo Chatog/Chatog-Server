@@ -46,7 +46,6 @@ class MemberService {
 
     MemberMapper.deleteMember(memberId);
 
-    // @TODO stop media
     // stop socket
     closeSocket(memberId);
   }

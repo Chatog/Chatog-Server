@@ -2,6 +2,7 @@ import express from 'express';
 import SERVER_CONFIG from '../configs/server.config.json';
 import cors from 'cors';
 import { initRoomEventHandler, RoomController } from './controllers/room';
+import { initMediaEventHandler } from './controllers/media';
 import { createServer } from 'http';
 import { initSocketIO } from './socket';
 import MediaManager from './media';
@@ -38,12 +39,20 @@ if (IS_DEBUG) {
  */
 app.use('/room', RoomController);
 initRoomEventHandler();
+/**
+ * Media
+ */
+initMediaEventHandler();
 
 const httpServer = createServer(app);
 // init socket
 const socketServer = initSocketIO(httpServer);
 // init media manager
-MediaManager.init(socketServer, MediaService.onMediaPub);
+MediaManager.init(
+  socketServer,
+  MediaService.onMediaPub,
+  MediaService.onMediaUnpub
+);
 
 httpServer.listen(SERVER_CONFIG.PORT, () => {
   console.log(
