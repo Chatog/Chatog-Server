@@ -5,10 +5,11 @@ import {
   Transport,
   Producer,
   Consumer,
-  RtpCapabilities
+  RtpCapabilities,
+  ProducerOptions
 } from 'mediasoup/node/lib/types';
 import config from './media-config';
-import { fail, success } from '../controllers';
+import { fail, ResCode, success } from '../controllers';
 import { Server, Socket } from 'socket.io';
 
 /**
@@ -27,7 +28,17 @@ export enum SignalingEvent {
   closeConsumer = 'closeConsumer'
 }
 
-export type OnProducerCallback = (socket: Socket, producer: Producer) => void;
+export type OnProducerCallback = (
+  // temporarily use socket.data only
+  socket: {
+    data: any;
+  },
+  producer: Producer
+) => void;
+export type ProduceAuthGuard = (
+  socket: Socket,
+  producerOptions: ProducerOptions
+) => boolean;
 
 /**
  * class
@@ -36,6 +47,7 @@ export class MediaManagerServer {
   private _debug: boolean;
   private _onProducer?: OnProducerCallback;
   private _onProducerClose?: OnProducerCallback;
+  private _canProduce?: ProduceAuthGuard;
 
   private _worker?: Worker;
   private _routers: Map<string, Router> = new Map();
@@ -70,14 +82,9 @@ export class MediaManagerServer {
         if (!socketMedia) return;
         // clean producers
         socketMedia.producers.forEach((id, _) => {
-          const producer = this._producers.get(id);
-          if (producer) {
-            producer.close();
-            if (this._onProducerClose) {
-              this._onProducerClose(socket, producer);
-            }
-          }
-          this._producers.delete(id);
+          try {
+            this.closeProducer(socket, id);
+          } catch (e) {}
         });
         // clean consumers
         socketMedia.consumers.forEach((id, _) => {
@@ -192,6 +199,17 @@ export class MediaManagerServer {
       socket.on(
         EventPrefix + SignalingEvent.createProducer,
         async (payload, callback) => {
+          // check produce auth
+          if (this._canProduce && !this._canProduce(socket, payload)) {
+            // not an error
+            callback({
+              code: ResCode.ERROR_MSG,
+              msg: 'you are not allowed to pub this media',
+              data: null
+            });
+            return;
+          }
+
           const { transportId, kind, rtpParameters } = payload;
           let { appData } = payload;
           // get transport
@@ -206,13 +224,6 @@ export class MediaManagerServer {
             kind,
             rtpParameters,
             appData
-          });
-          producer.on('transportclose', () => {
-            producer.close();
-            this._producers.delete(producer.id);
-            if (this._onProducerClose) {
-              this._onProducerClose(socket, producer);
-            }
           });
 
           this._producers.set(producer.id, producer);
@@ -278,10 +289,6 @@ export class MediaManagerServer {
             paused: true
           });
 
-          consumer.on('transportclose', () => {
-            consumer.close();
-            this._consumers.delete(consumer.id);
-          });
           consumer.on('producerclose', () => {
             consumer.close();
             this._consumers.delete(consumer.id);
@@ -319,19 +326,12 @@ export class MediaManagerServer {
       socket.on(
         EventPrefix + SignalingEvent.closeProducer,
         async (producerId, callback) => {
-          const producer = this._producers.get(producerId);
-          if (!producer) {
-            callback(fail(new Error(`producer[${producerId}] not exists`)));
-            return;
+          try {
+            const producer = this.closeProducer(socket, producerId);
+            callback(success());
+          } catch (e) {
+            callback(fail(e));
           }
-          producer.close();
-          this._producers.delete(producer.id);
-
-          if (this._onProducerClose) {
-            this._onProducerClose(socket, producer);
-          }
-
-          callback(success());
         }
       );
       // closeConsumer
@@ -355,10 +355,12 @@ export class MediaManagerServer {
   async init(
     signalingServer: Server,
     onProducer?: OnProducerCallback,
-    onProducerClose?: OnProducerCallback
+    onProducerClose?: OnProducerCallback,
+    canProduce?: ProduceAuthGuard
   ) {
     this._onProducer = onProducer;
     this._onProducerClose = onProducerClose;
+    this._canProduce = canProduce;
 
     this.initSignaling(signalingServer);
 
@@ -375,6 +377,24 @@ export class MediaManagerServer {
       if (!this._worker) throw new Error('[media-manager] worker not ready');
       const router = await this._worker.createRouter(config.router);
       this._routers.set(routerId, router);
+    }
+  }
+
+  closeProducer(
+    socket: {
+      data: any;
+    },
+    producerId: string
+  ) {
+    const producer = this._producers.get(producerId);
+    if (!producer) {
+      throw new Error(`producer[${producerId}] not exists`);
+    }
+    producer.close();
+    this._producers.delete(producer.id);
+
+    if (this._onProducerClose) {
+      this._onProducerClose(socket, producer);
     }
   }
 }

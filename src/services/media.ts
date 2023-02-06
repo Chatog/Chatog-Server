@@ -1,10 +1,18 @@
-import { OnProducerCallback } from '../media/media-manager';
+import { OnProducerCallback, ProduceAuthGuard } from '../media/media-manager';
 import SyncService, { MediaSyncInfo } from './sync';
-import { IMediaVO } from '../controllers/media';
+import { IMediaVO, MediaType } from '../controllers/media';
 import MediaMapper from '../data/media';
 import { memberIdToRoomId } from '../utils/common';
 import MemberMapper from '../data/member';
-import { ERR_MEMBER_NOT_EXISTS } from '../utils/const';
+import {
+  ERR_MEMBER_NOT_EXISTS,
+  ERR_NOT_ROOM_OWNER,
+  ERR_ROOM_NOT_EXISTS
+} from '../utils/const';
+import MediaManager from '../media';
+import { getSocket } from '../socket';
+import { IS_DEBUG } from '..';
+import RoomMapper from '../data/room';
 
 class MediaService {
   onMediaPub: OnProducerCallback = (socket, producer) => {
@@ -76,7 +84,7 @@ class MediaService {
       return;
     }
 
-    SyncService.syncMedia(roomId, memberId, syncInfo);
+    SyncService.syncMedia(roomId, syncInfo);
   };
 
   onMediaUnpub: OnProducerCallback = (socket, producer) => {
@@ -164,6 +172,105 @@ class MediaService {
     });
     return ret;
   }
+
+  allowMedia(roomOwnerId: string, memberId: string, type: MediaType) {
+    // check room owner auth
+    const room = RoomMapper.findRoomById(memberIdToRoomId(roomOwnerId));
+    if (!room) throw new Error(ERR_ROOM_NOT_EXISTS);
+    if (room.roomOwnerId !== roomOwnerId) throw new Error(ERR_NOT_ROOM_OWNER);
+    // check if target member in this room
+    if (room.memberIds.indexOf(memberId) < 0)
+      throw new Error(ERR_MEMBER_NOT_EXISTS);
+    // update member auth
+    const member = MemberMapper.findMemberById(memberId);
+    if (!member) throw new Error(ERR_MEMBER_NOT_EXISTS);
+
+    switch (type) {
+      case MediaType.MIC:
+        member.banAudio = false;
+        break;
+      case MediaType.CAMERA:
+        member.banVideo = false;
+        break;
+      case MediaType.SCREEN:
+        member.banScreen = false;
+        break;
+    }
+    MemberMapper.updateMember(member);
+    // sync member info for room owner
+    SyncService.syncRoomMemberFor(roomOwnerId);
+  }
+
+  async banMedia(roomOwnerId: string, memberId: string, type: MediaType) {
+    // check room owner auth
+    const room = RoomMapper.findRoomById(memberIdToRoomId(roomOwnerId));
+    if (!room) throw new Error(ERR_ROOM_NOT_EXISTS);
+    if (room.roomOwnerId !== roomOwnerId) throw new Error(ERR_NOT_ROOM_OWNER);
+    // check if target member in this room
+    if (room.memberIds.indexOf(memberId) < 0)
+      throw new Error(ERR_MEMBER_NOT_EXISTS);
+    // if already pubed, stop it
+    const imedias = MediaMapper.memberIMedias.get(memberId);
+    if (imedias) {
+      let mediaId = '';
+      switch (type) {
+        case MediaType.MIC:
+          mediaId = imedias.chat?.audioId || '';
+          break;
+        case MediaType.CAMERA:
+          mediaId = imedias.chat?.videoId || '';
+          break;
+        case MediaType.SCREEN:
+          mediaId = imedias.screen?.videoId || '';
+      }
+      if (mediaId !== '') {
+        if (IS_DEBUG) {
+          console.debug(
+            `[banMedia] member[${memberId}] pubed ${type} will be stopped`
+          );
+        }
+        const socket = await getSocket(memberId);
+        if (!socket) {
+          throw new Error(
+            `[banMedia] cannot find socket for member[${memberId}]`
+          );
+        }
+        MediaManager.closeProducer(socket, mediaId);
+      }
+    }
+    // update member auth
+    const member = MemberMapper.findMemberById(memberId);
+    if (!member) throw new Error(ERR_MEMBER_NOT_EXISTS);
+    switch (type) {
+      case MediaType.MIC:
+        member.banAudio = true;
+        break;
+      case MediaType.CAMERA:
+        member.banVideo = true;
+        break;
+      case MediaType.SCREEN:
+        member.banScreen = true;
+        break;
+    }
+    MemberMapper.updateMember(member);
+    // sync member info for room owner
+    SyncService.syncRoomMemberFor(roomOwnerId);
+  }
+
+  canProduce: ProduceAuthGuard = (socket, options) => {
+    const memberId = socket.data.memberId;
+    const member = MemberMapper.findMemberById(memberId);
+    if (member) {
+      if (
+        (options.appData?.type === MediaType.MIC && !member.banAudio) ||
+        (options.appData?.type === MediaType.CAMERA && !member.banVideo) ||
+        (options.appData?.type === MediaType.SCREEN && !member.banScreen)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
 }
 
 const mediaService = new MediaService();

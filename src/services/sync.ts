@@ -1,4 +1,4 @@
-import { broadcastExcept } from '../socket';
+import { broadcastExcept, getSocket } from '../socket';
 import MemberService from './member';
 
 const SYNC_TYPE = {
@@ -15,6 +15,9 @@ export interface MediaSyncInfo {
 }
 
 class SyncService {
+  /**
+   * @param memberId except member
+   */
   syncRoomMembers(roomId: string, memberId: string) {
     broadcastExcept(
       roomId,
@@ -24,11 +27,25 @@ class SyncService {
         MemberService.getRoomMembers(socket.data.roomId, socket.data.memberId)
     );
   }
+  /**
+   * @param memberId the only sync member
+   */
+  async syncRoomMemberFor(memberId: string) {
+    const socket = await getSocket(memberId);
+    if (socket) {
+      socket.emit(
+        SYNC_TYPE.SYNC_ROOM_MEMBERS,
+        MemberService.getRoomMembers(socket.data.roomId!, socket.data.memberId!)
+      );
+    }
+  }
 
-  syncMedia(roomId: string, memberId: string, info: MediaSyncInfo) {
+  syncMedia(roomId: string, info: MediaSyncInfo) {
     broadcastExcept(
       roomId,
-      (socket) => socket.data.memberId === memberId,
+      // sync to pub side too for promising local state
+      // use when ban media stop pub
+      () => false,
       SYNC_TYPE.SYNC_MEDIA,
       info
     );

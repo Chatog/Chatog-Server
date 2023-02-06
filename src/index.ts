@@ -51,7 +51,8 @@ const socketServer = initSocketIO(httpServer);
 MediaManager.init(
   socketServer,
   MediaService.onMediaPub,
-  MediaService.onMediaUnpub
+  MediaService.onMediaUnpub,
+  MediaService.canProduce
 );
 
 httpServer.listen(SERVER_CONFIG.PORT, () => {

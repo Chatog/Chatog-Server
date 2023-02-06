@@ -70,8 +70,9 @@ export interface RoomInfo {
   roomId: string;
   roomName: string;
   roomStartTime: number;
+  roomOwnerId: string;
 }
-const handleGetRoomInfo: EventHandler<Res<RoomInfo>> = (
+const handleGetRoomInfo: EventHandler<void, Res<RoomInfo>> = (
   socket,
   _,
   callback
@@ -87,7 +88,7 @@ export interface RoomMemberVO extends RoomMember {
   isRoomOwner: boolean;
 }
 // get room members
-const handleGetRoomMembers: EventHandler<Res<RoomMemberVO[]>> = (
+const handleGetRoomMembers: EventHandler<void, Res<RoomMemberVO[]>> = (
   socket,
   _,
   callback
@@ -107,7 +108,7 @@ const handleGetRoomMembers: EventHandler<Res<RoomMemberVO[]>> = (
 };
 
 // quit room
-const handleQuitRoom: EventHandler<Res<void>> = (socket, _, callback) => {
+const handleQuitRoom: EventHandler<void, Res<void>> = (socket, _, callback) => {
   try {
     RoomService.quitRoom(socket.data.roomId!, socket.data.memberId!);
     callback(success());

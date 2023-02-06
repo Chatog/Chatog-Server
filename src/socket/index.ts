@@ -1,5 +1,5 @@
 import { Server } from 'http';
-import { RemoteSocket, Server as SocketServer } from 'socket.io';
+import { RemoteSocket, Server as SocketServer, Socket } from 'socket.io';
 import { DefaultEventsMap } from 'socket.io/dist/typed-events';
 import { IS_DEBUG } from '..';
 import RoomService from '../services/room';
@@ -100,14 +100,6 @@ export function broadcastExcept(
       }
     });
 }
-export function broadcast(
-  roomId: string,
-  event: string,
-  dataGenerator: DataGenerator
-) {
-  broadcastExcept(roomId, () => false, event, dataGenerator);
-}
-
 /**
  * close socket of a specific member
  */
@@ -121,5 +113,18 @@ export function closeSocket(memberId: string) {
       if (memberSocket) {
         memberSocket.disconnect();
       }
+    });
+}
+/**
+ * get socket by memberId
+ */
+export async function getSocket(
+  memberId: string
+): Promise<RemoteSocket<any, ChatogSocketData> | undefined> {
+  return io
+    ?.in(memberIdToRoomId(memberId))
+    .fetchSockets()
+    .then((sockets) => {
+      return sockets.find((socket) => socket.data.memberId === memberId);
     });
 }

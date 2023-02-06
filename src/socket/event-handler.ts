@@ -3,22 +3,22 @@ import { DefaultEventsMap } from 'socket.io/dist/typed-events';
 import { ChatogSocketData } from '.';
 import { IS_DEBUG } from '..';
 
-export type EventHandler<T> = (
+export type EventHandler<P, R> = (
   socket: Socket<
     DefaultEventsMap,
     DefaultEventsMap,
     DefaultEventsMap,
     ChatogSocketData
   >,
-  data: T,
-  callback: (v: T) => void
+  data: P,
+  callback: (v: R) => void
 ) => void;
 
-const eventHandlers: Map<string, EventHandler<any>> = new Map();
+const eventHandlers: Map<string, EventHandler<any, any>> = new Map();
 
 export function registerEventHandler(
   eventName: string,
-  handler: EventHandler<any>
+  handler: EventHandler<any, any>
 ) {
   eventHandlers.set(eventName, handler);
 }
