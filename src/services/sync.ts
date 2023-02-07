@@ -3,7 +3,8 @@ import MemberService from './member';
 
 const SYNC_TYPE = {
   SYNC_ROOM_MEMBERS: 'SYNC_ROOM_MEMBERS',
-  SYNC_MEDIA: 'SYNC_MEDIA'
+  SYNC_MEDIA: 'SYNC_MEDIA',
+  SYNC_CHAT_MSG: 'SYNC_CHAT_MSG'
 };
 
 export interface MediaSyncInfo {
@@ -12,6 +13,23 @@ export interface MediaSyncInfo {
   nickname?: string;
   audioId?: string;
   videoId?: string;
+}
+
+export enum ChatMsgState {
+  SENDING,
+  SUCCESS,
+  FAIL
+}
+export interface ChatMsg {
+  msgId: string;
+  text: string;
+  state: ChatMsgState;
+  time: number;
+  sender: {
+    memberId: string;
+    nickname: string;
+  };
+  localId: string;
 }
 
 class SyncService {
@@ -49,6 +67,10 @@ class SyncService {
       SYNC_TYPE.SYNC_MEDIA,
       info
     );
+  }
+
+  syncChatMsg(roomId: string, msg: ChatMsg) {
+    broadcastExcept(roomId, () => false, SYNC_TYPE.SYNC_CHAT_MSG, msg);
   }
 }
 

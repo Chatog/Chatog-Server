@@ -9,6 +9,9 @@ export function generateRoomId(): string {
 export function generateMemberId(roomId: string): string {
   return roomId + '@' + uuid().replaceAll(/\-/g, '');
 }
+export function generateMsgId(memberId: string): string {
+  return memberId + '@' + uuid().replaceAll(/\-/g, '');
+}
 
 /**
  * convert memberId to roomId

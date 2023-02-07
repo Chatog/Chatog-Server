@@ -3,6 +3,7 @@ import SERVER_CONFIG from '../configs/server.config.json';
 import cors from 'cors';
 import { initRoomEventHandler, RoomController } from './controllers/room';
 import { initMediaEventHandler } from './controllers/media';
+import { initChatEventHandler } from './controllers/chat';
 import { createServer } from 'http';
 import { initSocketIO } from './socket';
 import MediaManager from './media';
@@ -43,6 +44,10 @@ initRoomEventHandler();
  * Media
  */
 initMediaEventHandler();
+/**
+ * Chat
+ */
+initChatEventHandler();
 
 const httpServer = createServer(app);
 // init socket
