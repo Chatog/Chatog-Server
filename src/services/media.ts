@@ -149,7 +149,7 @@ class MediaService {
       MediaMapper.memberIMedias.delete(memberId);
     }
 
-    SyncService.syncMedia(roomId, memberId, syncInfo);
+    SyncService.syncMedia(roomId, syncInfo);
   };
 
   getMediaList(roomId: string, memberId: string): IMediaVO[] {
