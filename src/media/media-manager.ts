@@ -340,11 +340,13 @@ export class MediaManagerServer {
         async (consumerId, callback) => {
           const consumer = this._consumers.get(consumerId);
           if (!consumer) {
-            callback(fail(new Error(`producer[${consumerId}] not exists`)));
+            callback(fail(new Error(`consumer[${consumerId}] not exists`)));
             return;
           }
           consumer.close();
           this._consumers.delete(consumer.id);
+          this._socketMedias.get(socket.id)!.consumers.delete(consumer.id);
+
           callback(success());
         }
       );

@@ -71,6 +71,7 @@ export interface RoomInfo {
   roomName: string;
   roomStartTime: number;
   roomOwnerId: string;
+  banChat: boolean;
 }
 const handleGetRoomInfo: EventHandler<void, Res<RoomInfo>> = (
   socket,
