@@ -368,7 +368,7 @@ export class MediaManagerServer {
 
     const worker = await mediasoup.createWorker({
       rtcMinPort: 20000,
-      rtcMaxPort: 30000
+      rtcMaxPort: 20005
     });
     this._worker = worker;
     console.log('[media-manager] worker ready');
