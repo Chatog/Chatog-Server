@@ -4,10 +4,12 @@ import cors from 'cors';
 import { initRoomEventHandler, RoomController } from './controllers/room';
 import { initMediaEventHandler } from './controllers/media';
 import { initChatEventHandler } from './controllers/chat';
-import { createServer } from 'http';
+import { createServer } from 'https';
 import { initSocketIO } from './socket';
 import MediaManager from './media';
 import MediaService from './services/media';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export const IS_DEBUG = process.argv[2] === '--debug';
 
@@ -49,9 +51,15 @@ initMediaEventHandler();
  */
 initChatEventHandler();
 
-const httpServer = createServer(app);
+const httpsServer = createServer(
+  {
+    cert: fs.readFileSync(path.resolve(__dirname, './cert/cert.pem')),
+    key: fs.readFileSync(path.resolve(__dirname, './cert/key.pem'))
+  },
+  app
+);
 // init socket
-const socketServer = initSocketIO(httpServer);
+const socketServer = initSocketIO(httpsServer);
 // init media manager
 MediaManager.init(
   socketServer,
@@ -60,8 +68,8 @@ MediaManager.init(
   MediaService.canProduce
 );
 
-httpServer.listen(SERVER_CONFIG.PORT, () => {
+httpsServer.listen(SERVER_CONFIG.PORT, () => {
   console.log(
-    `[index.ts] app listening on http://localhost:${SERVER_CONFIG.PORT}`
+    `[index.ts] app listening on https://localhost:${SERVER_CONFIG.PORT}`
   );
 });
